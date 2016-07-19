@@ -54,6 +54,5 @@ uint32_t ble_radio_notification_init(uint32_t                             irq_pr
         return err_code;
     }
 
-    // Configure the event
-    return sd_radio_notification_cfg_set(NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH, distance);
+    return sd_radio_notification_cfg_set(NRF_RADIO_NOTIFICATION_TYPE_INT_ON_BOTH, (uint8_t)distance);
 }
