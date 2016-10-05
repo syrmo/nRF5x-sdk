@@ -98,6 +98,7 @@
 // const uint32_t UICR_ADDR_0xF4 __attribute__((at(0x100010F4))) __attribute__((used)) = 0xFFFFFFFF;
 // const uint32_t UICR_ADDR_0xF8 __attribute__((at(0x100010F8))) __attribute__((used)) = 0xFFFFFFFF;
 // const uint32_t UICR_ADDR_0xFC __attribute__((at(0x100010FC))) __attribute__((used)) = 0xFFFFFFFF;
+const uint32_t UICR_ADDR_0x20C __attribute__((section(".uicrNFCPINSAddress"))) __attribute__((used)) = 0xFFFFFFFE;
 
 /*lint --flb "Leave library region" */
 
