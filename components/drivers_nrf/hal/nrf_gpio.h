@@ -334,6 +334,16 @@ __STATIC_INLINE uint32_t nrf_gpio_pin_read(uint32_t pin_number);
 __STATIC_INLINE uint32_t nrf_gpio_pins_read(void);
 
 /**
+ * @brief Function for reading the output level of all GPIO pins.
+ *
+ * Note that the pin must have output connected for the value
+ * returned from this function to be valid.
+ *
+ * @retval Status of output of all pins
+ */
+__STATIC_INLINE uint32_t nrf_gpio_pins_write(void);
+
+/**
  * @brief Function for reading the sense configuration of a GPIO pin.
  *
  * @param pin_number specifies the pin number (0-31) to
@@ -602,6 +612,11 @@ __STATIC_INLINE uint32_t nrf_gpio_pin_read(uint32_t pin_number)
 __STATIC_INLINE uint32_t nrf_gpio_pins_read(void)
 {
     return NRF_GPIO->IN;
+}
+
+__STATIC_INLINE uint32_t nrf_gpio_pins_write(void)
+{
+    return NRF_GPIO->OUT;
 }
 
 __STATIC_INLINE nrf_gpio_pin_sense_t nrf_gpio_pin_sense_get(uint32_t pin_number)
