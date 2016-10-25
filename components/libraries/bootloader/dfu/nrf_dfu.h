@@ -32,8 +32,6 @@
 extern "C" {
 #endif
 
-#define BOOTLOADER_BUTTON                       (BSP_BUTTON_3)                      /**< Button for entering DFU mode. */
-
 /** @brief Function for initializing a DFU operation.
  *
  * This function initializes a DFU operation and any transports that are registered

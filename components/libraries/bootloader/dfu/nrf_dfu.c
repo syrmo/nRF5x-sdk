@@ -18,17 +18,29 @@
 #include "nrf_gpio.h"
 #include "app_scheduler.h"
 #include "app_timer_appsh.h"
+#include "nrf_dfu_conf.h"
 #include "nrf_log.h"
-#include "boards.h"
 #include "nrf_bootloader_info.h"
 #include "nrf_dfu_req_handler.h"
+#include "nrf_wdt.h"
+
 
 #define SCHED_MAX_EVENT_DATA_SIZE       MAX(APP_TIMER_SCHED_EVT_SIZE, 0)                        /**< Maximum size of scheduler events. */
 
 #define SCHED_QUEUE_SIZE                20                                                      /**< Maximum number of events in the scheduler queue. */
 
+#define WD_FEED_INTERVAL                APP_TIMER_TICKS(200, APP_TIMER_PRESCALER)
+
 #define APP_TIMER_PRESCALER             0                                                       /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                                       /**< Size of timer operation queues. */
+
+APP_TIMER_DEF(m_wd_feed_timer_id);
+
+static void wdt_feed_all_channels(void * p_event_data, uint16_t event_size);
+static void put_wdt_feed_all_channels_into_sched(void * context);
+static void wait_for_event(void);
+static void scheduler_init(void);
+static void timers_init(void);
 
 // Weak function implementation
 
@@ -62,6 +74,9 @@ static void timers_init(void)
 {
     // Initialize timer module, making it use the scheduler.
     APP_TIMER_APPSH_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, true);
+    // Initialize timer module for wdt feed
+    app_timer_create(&m_wd_feed_timer_id, APP_TIMER_MODE_REPEATED, put_wdt_feed_all_channels_into_sched);
+    app_timer_start(m_wd_feed_timer_id, WD_FEED_INTERVAL, NULL);
 }
 
 
@@ -83,6 +98,23 @@ static void wait_for_event()
     }
 }
 
+static void put_wdt_feed_all_channels_into_sched(void * context)
+{
+  UNUSED_PARAMETER(context);
+
+  // This, will make us know that the primary thread is still alive.
+  app_sched_event_put(NULL, 0, wdt_feed_all_channels);
+}
+
+static void wdt_feed_all_channels(void * p_event_data, uint16_t event_size)
+{
+    UNUSED_PARAMETER(p_event_data);
+    UNUSED_PARAMETER(event_size);
+    for (int i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++)
+    {
+        NRF_WDT->RR[i] = WDT_RR_RR_Reload;
+    }
+}
 
 void nrf_dfu_wait()
 {

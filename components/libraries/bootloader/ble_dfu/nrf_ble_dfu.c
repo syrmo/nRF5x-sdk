@@ -20,47 +20,14 @@
 #include "nrf_bootloader_info.h"
 #include "ble_advdata.h"
 #include "ble_conn_params.h"
-#include "boards.h"
+#include "nrf_dfu_conf.h"
+#include "nrf_gpio.h"
 #include "nrf_log.h"
 #include "ble_hci.h"
 #include "app_timer.h"
 #include "softdevice_handler_appsh.h"
 #include "nrf_log.h"
 #include "nrf_delay.h"
-
-#define ADVERTISING_LED_PIN_NO               BSP_LED_0                                              /**< Is on when device is advertising. */
-#define CONNECTED_LED_PIN_NO                 BSP_LED_1                                              /**< Is on when device has connected. */
-
-#define DEVICE_NAME                          "DfuTarg"                                              /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME                    "NordicSemiconductor"                                  /**< Manufacturer. Will be passed to Device Information Service. */
-
-#define MIN_CONN_INTERVAL                    (uint16_t)(MSEC_TO_UNITS(15, UNIT_1_25_MS))            /**< Minimum acceptable connection interval. */
-#define MAX_CONN_INTERVAL_MS                 30                                                     /**< Maximum acceptable connection interval in milliseconds. */
-#define MAX_CONN_INTERVAL                    (uint16_t)(MSEC_TO_UNITS(MAX_CONN_INTERVAL_MS, UNIT_1_25_MS)) /**< Maximum acceptable connection interval . */
-#define SLAVE_LATENCY                        0                                                      /**< Slave latency. */
-#define CONN_SUP_TIMEOUT                     (4 * 100)                                              /**< Connection supervisory timeout (4 seconds). */
-
-#define APP_TIMER_PRESCALER                  0                                                      /**< Value of the RTC1 PRESCALER register. */
-
-#define FIRST_CONN_PARAMS_UPDATE_DELAY       APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)              /**< Time from the Connected event to first time sd_ble_gap_conn_param_update is called (100 milliseconds). */
-#define NEXT_CONN_PARAMS_UPDATE_DELAY        APP_TIMER_TICKS(500, APP_TIMER_PRESCALER)              /**< Time between each call to sd_ble_gap_conn_param_update after the first call (500 milliseconds). */
-#define MAX_CONN_PARAMS_UPDATE_COUNT         3                                                      /**< Number of attempts before giving up the connection parameter negotiation. */
-
-#define APP_ADV_INTERVAL                     MSEC_TO_UNITS(25, UNIT_0_625_MS)                       /**< The advertising interval (25 ms.). */
-#define APP_ADV_TIMEOUT_IN_SECONDS           BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED                  /**< The advertising timeout in units of seconds. This is set to @ref BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED so that the advertisement is done as long as there there is a call to @ref dfu_transport_close function.*/
-
-#define APP_FEATURE_NOT_SUPPORTED            BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2                   /**< Reply when unsupported features are requested. */
-
-#define MAX_DFU_PKT_LEN                     (20)                                                    /**< Maximum length (in bytes) of the DFU Packet characteristic. */
-#define PKT_CREATE_PARAM_LEN                (6)                                                     /**< Length (in bytes) of the parameters for Create Object request. */
-#define PKT_SET_PRN_PARAM_LEN               (3)                                                     /**< Length (in bytes) of the parameters for Set Packet Receipt Notification request. */
-#define PKT_READ_OBJECT_INFO_PARAM_LEN      (2)                                                     /**< Length (in bytes) of the parameters for Read Object Info request. */
-#define MAX_RESPONSE_LEN                    (15)                                                    /**< Maximum length (in bytes) of the response to a Control Point command. */
-
-
-#if (NRF_SD_BLE_API_VERSION == 3)
-#define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                                       /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
-#endif
 
 
 static ble_dfu_t            m_dfu;                                                                   /**< Structure used to identify the Device Firmware Update service. */
@@ -472,7 +439,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
     ble_gatts_rw_authorize_reply_params_t   auth_reply = {0};
     ble_gatts_evt_rw_authorize_request_t  * p_authorize_request;
     ble_gatts_evt_write_t                 * p_ble_write_evt;
-    
+
     p_authorize_request = &(p_ble_evt->evt.gatts_evt.params.authorize_request);
     p_ble_write_evt = &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write);
 
@@ -492,7 +459,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
         {
             // Send an error response to the peer indicating that the CCCD is improperly configured.
             auth_reply.params.write.gatt_status = BLE_GATT_STATUS_ATTERR_CPS_CCCD_CONFIG_ERROR;
- 
+
             // Ignore response of auth reply
             (void)sd_ble_gatts_rw_authorize_reply(m_conn_handle, &auth_reply);
             return false;
@@ -607,9 +574,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             {
                 if (on_rw_authorize_req(&m_dfu, p_ble_evt))
                 {
-                    err_code = on_ctrl_pt_write(&m_dfu, 
+                    err_code = on_ctrl_pt_write(&m_dfu,
                            &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write));
-#ifdef NRF_DFU_DEBUG_VERSION  
+#ifdef NRF_DFU_DEBUG_VERSION
                     if (err_code != NRF_SUCCESS)
                     {
                         NRF_LOG_ERROR("Could not handle on_ctrl_pt_write. err_code: 0x%04x\r\n", err_code);
@@ -631,19 +598,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             err_code = sd_ble_gatts_sys_attr_set(p_ble_evt->evt.gap_evt.conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break;
-        
+
         case BLE_GATTS_EVT_WRITE:
             on_write(&m_dfu, p_ble_evt);
             break;
 
 #if (NRF_SD_BLE_API_VERSION == 3)
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
-            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle, 
+            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                        NRF_BLE_MAX_MTU_SIZE);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
-        
+
         default:
             // No implementation needed.
             break;
@@ -766,8 +733,8 @@ static uint32_t ble_stack_init(bool init_softdevice)
 
 #if (NRF_SD_BLE_API_VERSION == 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
-#endif    
-    
+#endif
+
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     return err_code;
