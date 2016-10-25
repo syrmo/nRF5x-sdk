@@ -74,7 +74,7 @@ static void uart_event_handler(nrf_drv_uart_event_t * p_event, void * p_context)
 
 ret_code_t nrf_log_backend_init(bool blocking)
 {
-    uint32_t              ret_code;
+    uint32_t              ret_code = NRF_SUCCESS;
 
     if (m_initialized && (blocking == m_blocking_mode))
     {
@@ -115,7 +115,7 @@ ret_code_t nrf_log_backend_init(bool blocking)
 
     m_initialized   = true;
     m_blocking_mode = blocking;
-    return NRF_SUCCESS;
+    return ret_code;
 }
 
 
@@ -175,7 +175,7 @@ static bool serial_tx(uint8_t * p_buf, uint32_t len)
 
 static uint8_t serial_get_byte(void)
 {
-    uint8_t data;
+    uint8_t data = 0;
 #if NRF_LOG_BACKEND_SERIAL_USES_UART
     if (m_blocking_mode)
     {
