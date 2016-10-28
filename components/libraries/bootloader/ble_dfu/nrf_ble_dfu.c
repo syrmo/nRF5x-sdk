@@ -18,7 +18,8 @@
 #include "nrf_dfu_transport.h"
 #include "nrf_dfu_mbr.h"
 #include "nrf_bootloader_info.h"
-#include "ble_advdata.h"
+// #include "ble_advdata.h"
+#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "nrf_dfu_conf.h"
 #include "nrf_gpio.h"
@@ -80,28 +81,72 @@ static uint32_t conn_params_init(void)
 }
 
 
-/**@brief     Function for the Advertising functionality initialization.
+// /**@brief     Function for the Advertising functionality initialization.
+//  *
+//  * @details   Encodes the required advertising data and passes it to the stack.
+//  *            Also builds a structure to be passed to the stack when starting advertising.
+//  */
+// static uint32_t advertising_init(uint8_t adv_flags)
+// {
+//     ble_advdata_t advdata;
+//     ble_uuid_t    service_uuid;
+
+//     BLE_UUID_BLE_ASSIGN(service_uuid, BLE_DFU_SERVICE_UUID);
+
+//     // Build and set advertising data.
+//     memset(&advdata, 0, sizeof(advdata));
+
+//     advdata.name_type                     = BLE_ADVDATA_FULL_NAME;
+//     advdata.include_appearance            = false;
+//     advdata.flags                         = adv_flags;
+//     advdata.uuids_more_available.uuid_cnt = 1;
+//     advdata.uuids_more_available.p_uuids  = &service_uuid;
+
+//     return ble_advdata_set(&advdata, NULL);
+// }
+
+/**@brief Function for handling advertising events.
  *
- * @details   Encodes the required advertising data and passes it to the stack.
- *            Also builds a structure to be passed to the stack when starting advertising.
+ * @details This function will be called for advertising events which are passed to the application.
+ *
+ * @param[in] ble_adv_evt  Advertising event.
  */
-static uint32_t advertising_init(uint8_t adv_flags)
-{
+static void _on_adv_evt(ble_adv_evt_t ble_adv_evt) {
+  switch (ble_adv_evt) {
+    case BLE_ADV_EVT_IDLE:
+      NVIC_SystemReset();
+      break;
+    default:
+      break;
+  }
+}
+
+
+static uint32_t advertising_init(void) {
+    uint32_t      err_code;
     ble_advdata_t advdata;
     ble_uuid_t    service_uuid;
 
     BLE_UUID_BLE_ASSIGN(service_uuid, BLE_DFU_SERVICE_UUID);
 
-    // Build and set advertising data.
+    // Build advertising data struct to pass into @ref ble_advertising_init.
     memset(&advdata, 0, sizeof(advdata));
 
     advdata.name_type                     = BLE_ADVDATA_FULL_NAME;
     advdata.include_appearance            = false;
-    advdata.flags                         = adv_flags;
+    advdata.flags                         = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
     advdata.uuids_more_available.uuid_cnt = 1;
     advdata.uuids_more_available.p_uuids  = &service_uuid;
 
-    return ble_advdata_set(&advdata, NULL);
+    ble_adv_modes_config_t options = {0};
+    options.ble_adv_fast_enabled  = true;
+    options.ble_adv_fast_interval = APP_ADV_INTERVAL;
+    options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+
+    err_code = ble_advertising_init(&advdata, NULL, &options, _on_adv_evt, NULL);
+    VERIFY_SUCCESS(err_code);
+
+    return NRF_SUCCESS;
 }
 
 
@@ -109,33 +154,65 @@ static uint32_t advertising_init(uint8_t adv_flags)
  */
 static uint32_t advertising_start(void)
 {
-    uint32_t err_code;
-    ble_gap_adv_params_t adv_params;
+    // uint32_t err_code;
+    // ble_gap_adv_params_t adv_params;
+    // uint32_t      err_code;
+    // ble_advdata_t advdata;
+    // ble_uuid_t    service_uuid;
 
     if ((m_flags & DFU_BLE_FLAG_IS_ADVERTISING) != 0)
     {
         return NRF_SUCCESS;
     }
 
-    // Initialize advertising parameters (used when starting advertising).
-    memset(&adv_params, 0, sizeof(adv_params));
+    // // Initialize advertising parameters (used when starting advertising).
+    // memset(&adv_params, 0, sizeof(adv_params));
 
-    err_code = advertising_init(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
-    VERIFY_SUCCESS(err_code);
+    // err_code = advertising_init(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+    // VERIFY_SUCCESS(err_code);
 
-    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
-    adv_params.p_peer_addr = NULL;
-    adv_params.fp          = BLE_GAP_ADV_FP_ANY;
-    adv_params.interval    = APP_ADV_INTERVAL;
-    adv_params.timeout     = APP_ADV_TIMEOUT_IN_SECONDS;
+    // adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
+    // adv_params.p_peer_addr = NULL;
+    // adv_params.fp          = BLE_GAP_ADV_FP_ANY;
+    // adv_params.interval    = APP_ADV_INTERVAL;
+    // adv_params.timeout     = APP_ADV_TIMEOUT_IN_SECONDS;
 
-    err_code = sd_ble_gap_adv_start(&adv_params);
-    VERIFY_SUCCESS(err_code);
+    // err_code = sd_ble_gap_adv_start(&adv_params);
+    // VERIFY_SUCCESS(err_code);
+
+    // nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+    // nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+
+    // m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
+    // return NRF_SUCCESS;
+
+
+    // BLE_UUID_BLE_ASSIGN(service_uuid, BLE_DFU_SERVICE_UUID);
+
+    // // Build advertising data struct to pass into @ref ble_advertising_init.
+    // memset(&advdata, 0, sizeof(advdata));
+
+    // advdata.name_type                     = BLE_ADVDATA_FULL_NAME;
+    // advdata.include_appearance            = false;
+    // advdata.flags                         = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    // advdata.uuids_more_available.uuid_cnt = 1;
+    // advdata.uuids_more_available.p_uuids  = &service_uuid;
+
+    // ble_adv_modes_config_t options = {0};
+    // options.ble_adv_fast_enabled  = true;
+    // options.ble_adv_fast_interval = APP_ADV_INTERVAL;
+    // options.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+
+    // err_code = ble_advertising_init(&advdata, NULL, &options, _on_adv_evt, NULL);
+    // VERIFY_SUCCESS(err_code);
+
+    ble_advertising_start(BLE_ADV_MODE_FAST);
 
     nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
     nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
 
     m_flags |= DFU_BLE_FLAG_IS_ADVERTISING;
+
     return NRF_SUCCESS;
 }
 
@@ -890,6 +967,9 @@ uint32_t ble_dfu_transport_init(void)
     VERIFY_SUCCESS(err_code);
 
     err_code = conn_params_init();
+    VERIFY_SUCCESS(err_code);
+
+    err_code = advertising_init();
     VERIFY_SUCCESS(err_code);
 
     err_code = advertising_start();
